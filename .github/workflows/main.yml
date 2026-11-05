@@ -1,3 +1,4 @@
+
 name: Compilar Switch Toolbox
 
 on:
@@ -6,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: windows-2022
+    timeout-minutes: 35
+
     steps:
       - name: Obtener codigo
         uses: actions/checkout@v4
@@ -17,12 +20,27 @@ jobs:
         uses: NuGet/setup-nuget@v2
 
       - name: Restaurar paquetes
+        timeout-minutes: 10
         run: nuget restore Toolbox.sln -NonInteractive
 
       - name: Compilar version Release
-        run: msbuild Toolbox.sln /m /p:Configuration=Release /p:Platform="Any CPU" /verbosity:minimal
+        timeout-minutes: 20
+        shell: pwsh
+        run: |
+          msbuild Toolbox.sln /m:1 /nr:false /nologo /p:Configuration=Release '/p:Platform=Any CPU' /verbosity:normal '/flp:logfile=build.log;verbosity=detailed'
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
 
-      - name: Empaquetar compilacion
+      - name: Guardar registro de errores
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Registro-Compilacion
+          path: build.log
+          if-no-files-found: ignore
+
+      - name: Empaquetar Switch Toolbox
         if: success()
         uses: actions/upload-artifact@v4
         with:
